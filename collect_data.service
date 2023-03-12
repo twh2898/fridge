@@ -1,0 +1,11 @@
+[Unit]
+Description=Collect Temperature Data
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h
+ExecStart=/usr/bin/env python3 main.py
+Restart=always
+RestartSec=3600
+

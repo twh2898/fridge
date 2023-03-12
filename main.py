@@ -9,7 +9,7 @@ import logging
 
 LOGGING_FORMAT = '%(levelname)s:%(asctime)s:%(message)s'
 logging.basicConfig(filename='collect_data.log',
-                    level=logging.DEBUG,
+                    level=logging.INFO,
                     format=LOGGING_FORMAT)
 l = logging.getLogger(__name__)
 

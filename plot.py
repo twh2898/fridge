@@ -2,12 +2,14 @@
 
 import os
 import csv
+from time import process_time
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 import matplotlib.pyplot as plt
 from enum import Enum, auto
 from dataclasses import dataclass
 from scipy.signal import filtfilt, butter
+import numpy as np
 
 
 class Unit(Enum):
@@ -75,46 +77,107 @@ def avg(x: list):
     return sum(x) / len(x)
 
 
-def avg_points(data: list[Point]):
+def avg_points(data: list[Point], time_index=0):
     a_raw = avg([p.raw for p in data])
     a_c = avg([p.c for p in data])
     a_f = avg([p.f for p in data])
 
-    return Point(int(a_raw), a_c, a_f, data[0].time)
+    return Point(int(a_raw), a_c, a_f, data[time_index].time)
+
+
+def _box(n, data):
+    assert len(data) > n * 2
+
+    res = [data[n] for _ in range(n)]
+    for i in range(n, len(data)-n):
+        s = sum(data[i-n: i+n])
+        res.append(s / (n * 2))
+    res += [data[len(data) - n] for _ in range(n)]
+    return res
+
+
+def avg_per_time(data: list[Point], delta: timedelta):
+    res = []
+
+    start = 0
+    for i in range(len(data)):
+        t_start = data[start].time
+        c_time = data[i].time
+
+        if c_time > t_start + delta:
+            res.append(avg_points(data[start:i], time_index=-1))
+            start = i
+
+    if start != len(data):
+        res.append(avg_points(data[start:], time_index=-1))
+
+    return res
 
 
 def plot_w_smooth(ax, data: list[Point]):
-    average = avg_points(data)
-    x = [p.time for p in data]
+    x = np.array([p.time for p in data])
     values = [p.unit_value() for p in data]
     ax.set_ylabel('Temperature, {}'.format(GLOBAL_UNIT.name))
     ax.set_xlabel('Time')
     ax.grid()
-    ax.plot(x, values, label='Raw')
+    ax.plot(x, values, label='Raw', color='lightblue')
 
-    b, a = butter(1, 0.2)
-    clean = filtfilt(b, a, values)
-    ax.plot(x, clean, label='Butter 2, 0.2')
+    def bp(n, Wn):
+        b, a = butter(n, Wn)
+        clean = filtfilt(b, a, values)
+        ax.plot(x, clean, label='Butter {}, {}'.format(n, Wn))
 
+    Wn = 0.03
+    bp(1, Wn)
+    bp(2, Wn)
+    bp(4, Wn)
+    bp(8, Wn)
+
+    k_s = 50
+    kernel = np.ones(k_s) / k_s
+    box = np.convolve(values, kernel, mode='same')
+    # ax.plot(x, box, label='Box {}'.format(k_s))
+
+    ra = _box(100, values)
+    # ax.plot(x, ra, label='Box')
+
+    average = avg_points(data)
     av = average.unit_value()
     ax.plot([x[0], x[-1]], [av, av], '-k',
             label='Average {}'.format(average))
+
+    a = avg_per_time(data, timedelta(minutes=1))
+    x = [p.time for p in a]
+    y = [p.unit_value() for p in a]
+    # ax.plot(x, y, label='Avg per min')
 
     ax.legend()
 
 
 if __name__ == '__main__':
-    with open('data/20230312_191444.csv', 'r', newline='') as f:
+    _start = process_time()
+    with open('data/20230313.csv', 'r', newline='') as f:
         reader = csv.reader(f)
         data = list(reader)
+    _end = process_time()
 
+    print('Read data in', ((_end - _start) * 1000), 'ms')
+
+    _start = process_time()
     points = [from_row(r) for r in data]
+    _end = process_time()
 
+    print('Parse data in', ((_end - _start) * 1000), 'ms')
+
+    _start = process_time()
     last_point = points[-1]
     last_minute = last_n(points, timedelta(minutes=1))
-    last_hour = last_n(points, timedelta(hours=1))
-    last_day = last_n(points, timedelta(days=1))
     last_week = last_n(points, timedelta(days=7))
+    last_day = last_n(points, timedelta(days=1))
+    last_hour = last_n(points, timedelta(hours=1))
+    _end = process_time()
+
+    print('Processed lists in', ((_end - _start) * 1000), 'ms')
 
     print('Last sample:', last_point)
     print('Last minute:', avg_points(last_minute))
@@ -122,23 +185,27 @@ if __name__ == '__main__':
     print('Last day:', avg_points(last_day))
     print('Last week:', avg_points(last_week))
 
+    _start = process_time()
     fig = plt.figure()
 
-    ax1 = fig.add_subplot(211)
-    plot_w_smooth(ax1, last_minute)
-    ax1.set_title('Last Minute')
+    # ax1 = fig.add_subplot(211)
+    # plot_w_smooth(ax1, last_minute)
+    # ax1.set_title('Last Minute')
 
-    ax2 = fig.add_subplot(212)
+    ax2 = fig.add_subplot(211)
     plot_w_smooth(ax2, last_hour)
     ax2.set_title('Last Hour')
 
-    # ax3 = fig.add_subplot(313)
-    # plot_w_smooth(ax3, last_day)
-    # ax3.set_title('Last Day')
+    ax3 = fig.add_subplot(212)
+    plot_w_smooth(ax3, last_day)
+    ax3.set_title('Last Day')
 
     fig.tight_layout()
-    plt.show()
+    _end = process_time()
 
+    print('Plot data in', ((_end - _start) * 1000), 'ms')
+
+    plt.show()
     # Plots
     # last minute raw + smooth
     # last hour raw + smooth

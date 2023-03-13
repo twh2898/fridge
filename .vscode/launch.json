@@ -10,6 +10,13 @@
             "request": "launch",
             "program": "main.py",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: plot.py",
+            "type": "python",
+            "request": "launch",
+            "program": "plot.py",
+            "console": "integratedTerminal"
         }
     ]
 }

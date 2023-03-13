@@ -59,3 +59,4 @@ if __name__ == '__main__':
             sleep(1)
     except RuntimeError as e:
         l.exception('Runtime error')
+        raise e

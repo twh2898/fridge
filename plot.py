@@ -127,15 +127,15 @@ if __name__ == '__main__':
     ax1 = fig.add_subplot(211)
     plot_w_smooth(ax1, last_minute)
     ax1.set_title('Last Minute')
-    
+
     ax2 = fig.add_subplot(212)
     plot_w_smooth(ax2, last_hour)
     ax2.set_title('Last Hour')
-    
+
     # ax3 = fig.add_subplot(313)
     # plot_w_smooth(ax3, last_day)
     # ax3.set_title('Last Day')
-    
+
     fig.tight_layout()
     plt.show()
 

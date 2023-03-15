@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-import os
 import csv
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 import matplotlib.pyplot as plt
 from enum import Enum, auto
-from dataclasses import dataclass
 from scipy.signal import filtfilt, butter
+
+_TPoint = tuple[datetime, float]
 
 
 class Unit(Enum):
@@ -19,91 +19,76 @@ class Unit(Enum):
 GLOBAL_UNIT = Unit.F
 
 
-@dataclass
-class Point:
-    raw: int
-    c: float
-    f: float
-    time: datetime
-
-    def __str__(self):
-        unit = GLOBAL_UNIT
-        return as_unit(self.unit_value(unit), unit)
-
-    def unit_value(self, unit: Unit = GLOBAL_UNIT) -> int | float:
-        if unit == Unit.Raw:
-            return self.raw
-        elif unit == Unit.C:
-            return self.c
-        elif unit == Unit.F:
-            return self.f
-        raise RuntimeError('Invalid Unit', unit)
+def as_unit(x: float):
+    match GLOBAL_UNIT:
+        case Unit.Raw:
+            return str(int(x))
+        case Unit.C:
+            return '{:.2f} C'.format(x)
+        case Unit.F:
+            return '{:.2f} F'.format(x)
 
 
-def as_unit(x: int | float, unit: Unit = GLOBAL_UNIT):
-    if unit == Unit.Raw:
-        return str(x)
-    elif unit == Unit.C:
-        return '{:.2f} C'.format(x)
-    elif unit == Unit.F:
-        return '{:.2f} F'.format(x)
-
-
-def from_row(row: list[str]) -> Point:
+def from_row(row: list[str]) -> tuple[datetime, float]:
     assert len(row) == 4, 'Row must have 4 strings'
-    time, raw, t_c, t_f = row
-    return Point(int(float(raw)), float(t_c), float(t_f), parse(time))
+
+    time_s, raw, t_c, t_f = row
+    time = parse(time_s)
+
+    match GLOBAL_UNIT:
+        case Unit.Raw:
+            return time, float(raw)
+        case Unit.C:
+            return time, float(t_c)
+        case Unit.F:
+            return time, float(t_f)
 
 
-def last_n(data: list[Point], delta: timedelta):
+def last_n(data: list[_TPoint], delta: timedelta):
     assert len(data) > 0
 
-    res: list[Point] = []
-    last = data[-1]
+    res: list[_TPoint] = []
+    last = data[-1][0]
 
-    for curr in reversed(data):
-        if curr.time + delta < last.time:
+    for t, v in reversed(data):
+        if t + delta < last:
             break
-        res.insert(0, curr)
+        res.insert(0, (t, v))
     else:
         print('Warning: found end of data for delta', delta)
 
     return res
 
 
-def avg(x: list):
+def avg(x: list[float]):
     return sum(x) / len(x)
 
 
-def avg_points(data: list[Point], time_index=0):
-    av = avg([p.unit_value() for p in data])
+def avg_points(data: list[_TPoint]):
+    av = avg([v for _, v in data])
     return as_unit(av)
 
 
-def box_average(data: list[Point], N: int = 5):
-    points = [p.unit_value() for p in data]
-
+def box_average(data: list[float], N: int = 5):
     res = []
-    for i in range(len(points)):
+    for i in range(len(data)):
         start = max(0, i - N)
-        end = min(i + N, len(points))
-        n = end - start
-        res.append(sum(points[start:end]) / n)
-
+        end = min(i + N, len(data))
+        res.append(avg(data[start:end]))
     return res
 
 
-def plot_w_smooth(ax, data: list[Point]):
-    x = [p.time for p in data]
-    values = [p.unit_value() for p in data]
+def plot_w_smooth(ax, data: list[_TPoint]):
+    x = [t for t, _ in data]
+    y = [v for _, v in data]
     ax.set_ylabel('Temperature, {}'.format(GLOBAL_UNIT.name))
     ax.set_xlabel('Time')
     ax.grid()
-    ax.plot(x, values, '.-', label='Raw', color='lightblue')
+    ax.plot(x, y, '.-', label='Raw', color='lightblue')
 
     def bp(n, Wn):
         b, a = butter(n, Wn)
-        clean = filtfilt(b, a, values)
+        clean = filtfilt(b, a, y)
         ax.plot(x, clean, label='Butter {}, {}'.format(n, Wn))
 
     Wn = 0.03
@@ -112,12 +97,12 @@ def plot_w_smooth(ax, data: list[Point]):
     # bp(4, Wn)
     # bp(8, Wn)
 
-    av = avg([p.unit_value() for p in data])
+    av = avg(y)
     ax.plot([x[0], x[-1]], [av, av], '-k',
             label='Average {}'.format(as_unit(av)))
 
     N = 10
-    box = box_average(data, N)
+    box = box_average(y, N)
     ax.plot(x, box, label='Box {}'.format(N))
 
     ax.legend()
@@ -126,17 +111,15 @@ def plot_w_smooth(ax, data: list[Point]):
 if __name__ == '__main__':
     with open('data/20230314.csv', 'r', newline='') as f:
         reader = csv.reader(f)
-        data = list(reader)
+        data = list(map(from_row, reader))
 
-    points = [from_row(r) for r in data]
+    last_point = data[-1][1]
+    last_minute = last_n(data, timedelta(minutes=1))
+    last_week = last_n(data, timedelta(days=7))
+    last_day = last_n(data, timedelta(days=1))
+    last_hour = last_n(data, timedelta(hours=1))
 
-    last_point = points[-1]
-    last_minute = last_n(points, timedelta(minutes=1))
-    last_week = last_n(points, timedelta(days=7))
-    last_day = last_n(points, timedelta(days=1))
-    last_hour = last_n(points, timedelta(hours=1))
-
-    print('Last sample:', last_point)
+    print('Last sample:', as_unit(last_point))
     print('Last minute:', avg_points(last_minute))
     print('Last hour:', avg_points(last_hour))
     print('Last day:', avg_points(last_day))

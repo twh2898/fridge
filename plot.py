@@ -6,6 +6,7 @@ from dateutil.parser import parse
 import matplotlib.pyplot as plt
 from enum import Enum, auto
 from scipy.signal import filtfilt, butter
+import bench as _b
 
 _TPoint = tuple[datetime, float]
 
@@ -109,15 +110,19 @@ def plot_w_smooth(ax, data: list[_TPoint]):
 
 
 if __name__ == '__main__':
+    _b.start('read')
     with open('data/20230314.csv', 'r', newline='') as f:
         reader = csv.reader(f)
         data = list(map(from_row, reader))
+    print('Read data in', _b.end('read'), 's')
 
+    _b.start('slice')
     last_point = data[-1][1]
     last_minute = last_n(data, timedelta(minutes=1))
     last_week = last_n(data, timedelta(days=7))
     last_day = last_n(data, timedelta(days=1))
     last_hour = last_n(data, timedelta(hours=1))
+    print('Slice data in', _b.end('slice'), 's')
 
     print('Last sample:', as_unit(last_point))
     print('Last minute:', avg_points(last_minute))
@@ -125,6 +130,7 @@ if __name__ == '__main__':
     print('Last day:', avg_points(last_day))
     print('Last week:', avg_points(last_week))
 
+    _b.start('plot')
     fig = plt.figure()
 
     # ax1 = fig.add_subplot(211)
@@ -140,6 +146,7 @@ if __name__ == '__main__':
     ax3.set_title('Last Day')
 
     fig.tight_layout()
+    print('Plot data in', _b.end('plot'), 's')
 
     plt.show()
     # Plots

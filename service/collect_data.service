@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h
+WorkingDirectory=/opt/collect_data
 ExecStart=/usr/bin/env python3 main.py
 Restart=always
 RestartSec=60

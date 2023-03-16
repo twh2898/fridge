@@ -3,82 +3,72 @@
 import os
 from time import sleep
 from datetime import datetime
-import serial
-from serial.serialutil import SerialException
 import logging
 
+from sensor import ADC
+
 LOGGING_FORMAT = '%(levelname)s:%(asctime)s:%(message)s'
-logging.basicConfig(filename='collect_data.log',
+logging.basicConfig(filename='fridge.log',
                     level=logging.INFO,
                     format=LOGGING_FORMAT)
-l = logging.getLogger(__name__)
+_l = logging.getLogger(__name__)
 
-PORT = '/dev/ttyUSB0'
-BAUD = 9600
 OUTDIR = 'data'
+SAMPLE_RATE = 1  # Hz
+N_CHANNELS = 1
+assert 1 <= N_CHANNELS <= 4, 'Invalid number of channels to record'
 
 os.makedirs(OUTDIR, exist_ok=True)
 
 
-def read_data(s, f):
-    last_date = datetime.now().date()
+def main():
+    _l.info('Starting data acquisition')
+    _l.debug('Sample frequency %f hz', SAMPLE_RATE)
+
+    sensor = ADC()
+
+    start = datetime.now()
+    _l.debug('Start time is %s', start)
+
+    data_file = '{}.csv'.format(start.strftime('%Y%m%d'))
+    f = open(os.path.join(OUTDIR, data_file), 'a')
+    _l.info('Writing data to %s', data_file)
 
     while True:
-        l.info('Reading data')
-
-        data = s.readline()
-        l.debug('Data is %s', data)
-
-        line = data.decode().strip()
-
         now = datetime.now()
-        if now.date() != last_date:
-            # Yes, I know this drops one point... sue me
-            l.info('Date changed %s to %s, Switching', now.date(), last_date)
-            return
-        last_date = now.date()
+        if now.date() != start.date():
+            _l.debug('Current date %s does not match last date %s',
+                     now.date(), start.date())
+            _l.info('Rotating data files', now.date())
+            if f:
+                f.close()
+            data_file = '{}.csv'.format(start.strftime('%Y%m%d'))
+            f = open(os.path.join(OUTDIR, data_file), 'a')
+            _l.info('Writing data to %s', data_file)
 
-        now_str = now.strftime('%Y-%m-%dT%H:%M:%S')
-        line = now_str + ',' + line
-        print(line)
-        n = f.write(line + '\n')
-        l.debug('Write return %d', n)
+        row = [str(now)]
+        for channel in range(N_CHANNELS):
+            _, _, t_c, t_f = sensor.read(channel)
+            print('Channel', channel, f'{t_f:.2f} F')
+            row.append(f'{t_c:.4f}')
+            row.append(f'{t_f:.4f}')
+
+        f.write(','.join(row) + '\n')
         f.flush()
 
-        l.debug('loop')
-
-
-def main():
-    l.info('Connecting to %s at baud %d', PORT, BAUD)
-    try:
-        with serial.Serial(PORT, BAUD) as s:
-            l.debug('Serial port open')
-
-            while True:
-                start = datetime.now()
-                data_file = '{}.csv'.format(start.strftime('%Y%m%d'))
-                l.info('Writing data to %s', data_file)
-
-                with open(os.path.join(OUTDIR, data_file), 'a') as f:
-                    read_data(s, f)
-
-    except SerialException:
-        l.exception('Error reading data')
-
-    l.info('Exiting main')
+        wait_s = 1 / SAMPLE_RATE
+        _l.debug('Sleeping for %d seconds', wait_s)
+        sleep(wait_s)
 
 
 if __name__ == '__main__':
     try:
-        while True:
-            main()
-            l.info('Waiting for a new connection')
-            sleep(1)
+        main()
 
     except RuntimeError as e:
-        l.exception('Runtime error')
+        _l.exception('Runtime error')
         raise e
 
     except Exception as e:
-        l.exception('Exception')
+        _l.exception('Exception')
         raise e

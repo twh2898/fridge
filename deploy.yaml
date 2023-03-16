@@ -1,0 +1,41 @@
+#!/usr/bin/env ansible-playbook
+
+- name: Deploy
+  hosts: fridge
+  vars:
+    remote_root: fridge
+    remote_log: /var/log/collect_data.log
+    local_src: src
+    local_service: service/fridge.service
+    remote_service: .config/systemd/user/fridge.service
+
+  tasks:
+    - name: Create remote root
+      ansible.builtin.file:
+        path: "{{ remote_root }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy code
+      ansible.builtin.copy:
+        src: "{{ local_src }}/{{ item }}"
+        dest: "{{ remote_root }}/{{ item }}"
+        mode: "0644"
+      loop:
+        - main.py
+        - sensor.py
+
+    - name: Copy service
+      become: true
+      ansible.builtin.copy:
+        src: "{{ local_service }}"
+        dest: "{{ remote_service }}"
+        mode: "0644"
+
+    - name: Start systemd service
+      ansible.builtin.systemd:
+        name: fridge.service
+        state: started
+        enabled: true
+        daemon_reload: true
+        scope: user

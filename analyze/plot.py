@@ -11,38 +11,10 @@ import bench as _b
 _TPoint = tuple[datetime, float]
 
 
-class Unit(Enum):
-    Raw = auto()
-    C = auto()
-    F = auto()
-
-
-GLOBAL_UNIT = Unit.F
-
-
-def as_unit(x: float):
-    match GLOBAL_UNIT:
-        case Unit.Raw:
-            return str(int(x))
-        case Unit.C:
-            return '{:.2f} C'.format(x)
-        case Unit.F:
-            return '{:.2f} F'.format(x)
-
-
 def from_row(row: list[str]) -> tuple[datetime, float]:
-    assert len(row) == 4, 'Row must have 4 strings'
-
-    time_s, raw, t_c, t_f = row
-    time = parse(time_s)
-
-    match GLOBAL_UNIT:
-        case Unit.Raw:
-            return time, float(raw)
-        case Unit.C:
-            return time, float(t_c)
-        case Unit.F:
-            return time, float(t_f)
+    assert len(row) >= 3, 'Row must have at least 3 strings'
+    time, t_c, t_f = row[:3]
+    return parse(time), float(t_f)
 
 
 def last_n(data: list[_TPoint], delta: timedelta):
@@ -67,7 +39,7 @@ def avg(x: list[float]):
 
 def avg_points(data: list[_TPoint]):
     av = avg([v for _, v in data])
-    return as_unit(av)
+    return f'{av:.2f} F'
 
 
 def box_average(data: list[float], N: int = 5):
@@ -82,7 +54,7 @@ def box_average(data: list[float], N: int = 5):
 def plot_w_smooth(ax, data: list[_TPoint]):
     x = [t for t, _ in data]
     y = [v for _, v in data]
-    ax.set_ylabel('Temperature, {}'.format(GLOBAL_UNIT.name))
+    ax.set_ylabel('Temperature, F')
     ax.set_xlabel('Time')
     ax.grid()
     ax.plot(x, y, '.-', label='Raw', color='lightblue')
@@ -93,14 +65,14 @@ def plot_w_smooth(ax, data: list[_TPoint]):
         ax.plot(x, clean, label='Butter {}, {}'.format(n, Wn))
 
     Wn = 0.03
-    bp(1, Wn)
+    # bp(1, Wn)
     # bp(2, Wn)
     # bp(4, Wn)
     # bp(8, Wn)
 
     av = avg(y)
     ax.plot([x[0], x[-1]], [av, av], '-k',
-            label='Average {}'.format(as_unit(av)))
+            label='Average {}'.format(f'{av:.2f} F'))
 
     N = 10
     box = box_average(y, N)
@@ -111,7 +83,7 @@ def plot_w_smooth(ax, data: list[_TPoint]):
 
 if __name__ == '__main__':
     _b.start('read')
-    with open('data/20230314.csv', 'r', newline='') as f:
+    with open('data/20230316.csv', 'r', newline='') as f:
         reader = csv.reader(f)
         data = list(map(from_row, reader))
     print('Read data in', _b.end('read'), 's')
@@ -124,7 +96,7 @@ if __name__ == '__main__':
     last_hour = last_n(data, timedelta(hours=1))
     print('Slice data in', _b.end('slice'), 's')
 
-    print('Last sample:', as_unit(last_point))
+    print('Last sample:', f'{last_point:.2f} F')
     print('Last minute:', avg_points(last_minute))
     print('Last hour:', avg_points(last_hour))
     print('Last day:', avg_points(last_day))

@@ -1,4 +1,4 @@
 #!/bin/bash
 
 mkdir -p data
-scp -r pi@raspberrypi:~/data/*.csv data
+scp -r fridge:/opt/fridge/data/*.csv data

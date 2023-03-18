@@ -69,7 +69,7 @@ class ADC:
 
         v = _to_v(raw)
         vr = VCC - v
-        rt = v / (vr / R)
+        rt = vr / (v / R)
         ln = _log(rt / R)
 
         t_k = 1 / ((ln / B) + (1 / T0))

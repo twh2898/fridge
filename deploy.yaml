@@ -3,13 +3,20 @@
 - name: Deploy
   hosts: fridge
   vars:
-    remote_root: fridge
+    remote_root: /opt/fridge
     remote_log: /var/log/collect_data.log
     local_src: src
     local_service: service/fridge.service
-    remote_service: .config/systemd/user/fridge.service
+    remote_service: /usr/lib/systemd/system/fridge.service
+
+  become: true
 
   tasks:
+    - name: Install dependensies
+      ansible.builtin.pip:
+        name: adafruit-ads1x15
+        state: present
+
     - name: Create remote root
       ansible.builtin.file:
         path: "{{ remote_root }}"
@@ -38,4 +45,4 @@
         state: started
         enabled: true
         daemon_reload: true
-        scope: user
+        scope: system

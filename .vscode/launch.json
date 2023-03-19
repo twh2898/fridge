@@ -5,14 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: main.py",
+            "name": "Python: reader",
             "type": "python",
             "request": "launch",
-            "program": "src/main.py",
+            "program": "main.py",
+            "cwd": "${workspaceFolder}/src/reader",
             "console": "integratedTerminal"
         },
         {
-            "name": "Python: plot.py",
+            "name": "Python: analyze",
             "type": "python",
             "request": "launch",
             "program": "plot.py",

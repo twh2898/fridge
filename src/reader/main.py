@@ -4,28 +4,30 @@ import os
 from time import sleep
 from datetime import datetime
 import logging
+from config import load_config
 
-from sensor import ADC
+from sensor import ADC, Mock
 
-LOGGING_FORMAT = '%(levelname)s:%(asctime)s:%(message)s'
-logging.basicConfig(filename='fridge.log',
-                    level=logging.INFO,
-                    format=LOGGING_FORMAT)
+config = load_config('reader.conf')
+
+logging.basicConfig(filename=config.logging.filename,
+                    level=config.logging.level,
+                    format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
 _l = logging.getLogger(__name__)
 
-OUTDIR = 'data'
-SAMPLE_RATE = 1  # Hz
-N_CHANNELS = 1
-assert 1 <= N_CHANNELS <= 4, 'Invalid number of channels to record'
-
+OUTDIR = config.data.output_path
 os.makedirs(OUTDIR, exist_ok=True)
 
 
 def main():
     _l.info('Starting data acquisition')
-    _l.debug('Sample frequency %f hz', SAMPLE_RATE)
+    _l.debug('Sample frequency %f hz', config.data.sample_rate)
 
-    sensor = ADC()
+    if __debug__:
+        _l.info('Using mock sensor')
+        sensor = Mock()
+    else:
+        sensor = ADC()
 
     start = datetime.now()
     _l.debug('Start time is %s', start)
@@ -47,7 +49,7 @@ def main():
             _l.info('Writing data to %s', data_file)
 
         row = [str(now)]
-        for channel in range(N_CHANNELS):
+        for channel in range(config.data.channels):
             _, _, t_c, t_f = sensor.read(channel)
             print('Channel', channel, f'{t_f:.2f} F')
             row.append(f'{t_c:.4f}')
@@ -56,8 +58,8 @@ def main():
         f.write(','.join(row) + '\n')
         f.flush()
 
-        wait_s = 1 / SAMPLE_RATE
-        _l.debug('Sleeping for %d seconds', wait_s)
+        wait_s = 1 / config.data.sample_rate
+        _l.debug('Sleeping for %f seconds', wait_s)
         sleep(wait_s)
 
 

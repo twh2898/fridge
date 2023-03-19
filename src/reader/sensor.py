@@ -78,3 +78,15 @@ class ADC:
 
         _l.debug('Convert to temperatures %f K %f C %f F', t_k, t_c, t_f)
         return raw, t_k, t_c, t_f
+
+
+class Mock:
+    def read(self, channel: int = 0) -> tuple[int, float, float, float]:
+        from random import random
+        from math import sin
+        from time import time
+
+        t_k = T0 + sin(time()) * 10 + (random() - 0.5) * 1.5
+        t_c = _k_to_c(t_k)
+        t_f = _c_to_f(t_c)
+        return channel, t_k, t_c, t_f

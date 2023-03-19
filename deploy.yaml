@@ -3,46 +3,49 @@
 - name: Deploy
   hosts: fridge
   vars:
+    username: fridge
+    password: $1$/O16HWSN$vYfAEF0j2LpEfx5WFtj/4/
     remote_root: /opt/fridge
-    remote_log: /var/log/collect_data.log
-    local_src: src
-    local_service: service/fridge.service
-    remote_service: /usr/lib/systemd/system/fridge.service
+    remote_reader: "{{ remote_root }}/reader"
+    remote_server: "{{ remote_root }}/server"
+    remote_web: "{{ remote_root }}/web"
+    remote_log: /var/log/fridge
+    local_src: "{{ playbook_dir }}/src"
+    local_service: "{{ playbook_dir }}/service"
+    remote_service: /usr/lib/systemd/system
 
-  become: true
+  roles:
+    - init
+    - reader
 
   tasks:
-    - name: Install dependensies
-      ansible.builtin.pip:
-        name: adafruit-ads1x15
-        state: present
+    # - name: Setup Server
+    #   block:
+    #     - name: Copy code
+    #       ansible.builtin.copy:
+    #         src: "{{ local_src }}/server/{{ item }}"
+    #         dest: "{{ remote_server }}/{{ item }}"
+    #         mode: "0644"
+    #       loop:
+    #         - main.py
+    #         - reader.conf
+    #         - requirements.txt
+    #         - run.sh
 
-    - name: Create remote root
-      ansible.builtin.file:
-        path: "{{ remote_root }}"
-        state: directory
-        mode: "0755"
+    #     - name: Create venv
+    #       ansible.builtin.command: python3 -m venv .venv
+    #       args:
+    #         chdir: "{{ remote_server }}"
+    #         creates: "{{ remote_server }}/.venv"
 
-    - name: Copy code
-      ansible.builtin.copy:
-        src: "{{ local_src }}/{{ item }}"
-        dest: "{{ remote_root }}/{{ item }}"
-        mode: "0644"
-      loop:
-        - main.py
-        - sensor.py
+    #     - name: Install Dependencies
+    #       ansible.builtin.pip:
+    #         state: present
+    #         requirements: requirements.txt
+    #         virtualenv: .venv
 
-    - name: Copy service
-      become: true
-      ansible.builtin.copy:
-        src: "{{ local_service }}"
-        dest: "{{ remote_service }}"
-        mode: "0644"
-
-    - name: Start systemd service
-      ansible.builtin.systemd:
-        name: fridge.service
-        state: started
-        enabled: true
-        daemon_reload: true
-        scope: system
+    # - name: Create remote log
+    #   ansible.builtin.file:
+    #     path: "{{ remote_log }}"
+    #     state: directory
+    #     mode: "0755"

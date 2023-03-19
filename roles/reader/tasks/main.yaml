@@ -1,0 +1,51 @@
+- name: Create remote directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ remote_reader }}"
+    state: directory
+    mode: "0755"
+    owner: "{{ username }}"
+    group: "{{ username }}"
+
+- name: Copy code
+  become: true
+  ansible.builtin.copy:
+    src: "{{ local_src }}/reader/{{ item }}"
+    dest: "{{ remote_reader }}/{{ item }}"
+    mode: "0644"
+    owner: "{{ username }}"
+    group: "{{ username }}"
+  loop:
+    - main.py
+    - sensor.py
+    - config.py
+    - requirements.txt
+    - run.sh
+    - reader.conf
+
+- name: Install Dependencies
+  become: true
+  become_user: "{{ username }}"
+  ansible.builtin.pip:
+    state: present
+    requirements: requirements.txt
+    virtualenv: .venv
+    chdir: "{{ remote_reader }}"
+
+- name: Copy Service
+  become: true
+  ansible.builtin.copy:
+    src: "{{ local_service }}/reader.service"
+    dest: "{{ remote_service }}/reader.service"
+    mode: "0644"
+
+- name: Start systemd service
+  become: true
+  ansible.builtin.systemd:
+    name: reader.service
+    state: started
+    enabled: true
+    daemon_reload: true
+    scope: system
+  tags:
+    - start_service

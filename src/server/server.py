@@ -1,5 +1,6 @@
-from flask import Flask, g
+from flask import Flask, g, request
 import sqlite3
+from dateutil.parser import parse as dateparse
 
 if __debug__:
     DATABASE = './main.db'
@@ -20,7 +21,6 @@ def get_db():
                         for idx, value in enumerate(row))
 
         db.row_factory = make_dicts
-        # db.row_factory = sqlite3.Row
     return db
 
 
@@ -56,21 +56,40 @@ def close_connection(exception):
         db.close()
 
 
-@app.route("/api")
-def hello_world():
-    return "Hello, World!"
+# GET channel or all, must have a start time (something like since)
+
+SELECT_DATA_QUERY = '''
+SELECT *
+FROM fridge_data
+WHERE created > datetime(?)
+ORDER BY created
+'''
 
 
-@app.route("/api/get")
-def get():
-    res = query_db("SELECT * FROM posts")
-    return str(res)
+@app.route("/fridge", methods=['GET'])
+def get_fridge():
+    start = request.args.get('start')
+    if not start:
+        return 'Request must contain key start', 400
+    res = query_db(SELECT_DATA_QUERY, (start,))
+    return res
 
 
-@app.route("/api/put")
-def put():
-    res = insert_db("title", "Content")
-    return 'ok'
+SELECT_CHANNEL_QUERY = '''
+SELECT *
+FROM fridge_data
+WHERE channel = ? AND created > datetime(?)
+ORDER BY created
+'''
+
+
+@app.route("/fridge/<int:channel>", methods=['GET'])
+def get_channel(channel: int):
+    start = request.args.get('start')
+    if not start:
+        return 'Request must contain key start', 400
+    res = query_db(SELECT_CHANNEL_QUERY, (channel, start,))
+    return res
 
 
 if __name__ == '__main__':

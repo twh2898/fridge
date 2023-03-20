@@ -1,0 +1,15 @@
+[Unit]
+Description=Serve Temperature Data
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/fridge/server
+ExecStart=/bin/bash run.sh
+Restart=always
+RestartSec=60
+User=fridge
+Group=fridge
+
+[Install]
+WantedBy=default.target

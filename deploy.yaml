@@ -10,42 +10,11 @@
     remote_server: "{{ remote_root }}/server"
     remote_web: "{{ remote_root }}/web"
     remote_log: /var/log/fridge
+    remote_service: /usr/lib/systemd/system
     local_src: "{{ playbook_dir }}/src"
     local_service: "{{ playbook_dir }}/service"
-    remote_service: /usr/lib/systemd/system
 
   roles:
     - init
     - reader
-
-  tasks:
-    # - name: Setup Server
-    #   block:
-    #     - name: Copy code
-    #       ansible.builtin.copy:
-    #         src: "{{ local_src }}/server/{{ item }}"
-    #         dest: "{{ remote_server }}/{{ item }}"
-    #         mode: "0644"
-    #       loop:
-    #         - main.py
-    #         - reader.conf
-    #         - requirements.txt
-    #         - run.sh
-
-    #     - name: Create venv
-    #       ansible.builtin.command: python3 -m venv .venv
-    #       args:
-    #         chdir: "{{ remote_server }}"
-    #         creates: "{{ remote_server }}/.venv"
-
-    #     - name: Install Dependencies
-    #       ansible.builtin.pip:
-    #         state: present
-    #         requirements: requirements.txt
-    #         virtualenv: .venv
-
-    # - name: Create remote log
-    #   ansible.builtin.file:
-    #     path: "{{ remote_log }}"
-    #     state: directory
-    #     mode: "0755"
+    - server

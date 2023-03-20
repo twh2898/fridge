@@ -19,6 +19,14 @@
             "program": "plot.py",
             "cwd": "${workspaceFolder}/analyze",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: server",
+            "type": "python",
+            "request": "launch",
+            "program": "server.py",
+            "cwd": "${workspaceFolder}/src/server",
+            "console": "integratedTerminal"
         }
     ]
 }

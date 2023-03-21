@@ -1,4 +1,7 @@
-from flask import Flask, g, request
+
+import io
+import csv
+from flask import Flask, g, request, Response
 import sqlite3
 from dateutil.parser import parse as dateparse
 
@@ -28,12 +31,12 @@ with app.app_context():
     db = get_db()
 
 
-def query_db(query, args=(), one=False):
+def query_db(query, args=()):
     """Execute a query and return it's results."""
     cur = get_db().execute(query, args)
     rv = cur.fetchall()
     cur.close()
-    return (rv[0] if rv else None) if one else rv
+    return rv
 
 
 def insert_db(title, content):
@@ -62,12 +65,13 @@ ORDER BY created
 '''
 
 
-@app.route("/fridge", methods=['GET'])
+@app.route("/fridge")  # type: ignore
 def get_fridge():
     start = request.args.get('start')
     if not start:
         return 'Request must contain key start', 400
-    res = query_db(SELECT_DATA_QUERY, (start,))
+    d_start = dateparse(start)
+    res = query_db(SELECT_DATA_QUERY, (d_start,))
     return res
 
 
@@ -79,13 +83,46 @@ ORDER BY created
 '''
 
 
-@app.route("/fridge/<int:channel>", methods=['GET'])
+@app.route("/fridge/channel/<int:channel>")  # type: ignore
 def get_channel(channel: int):
     start = request.args.get('start')
     if not start:
         return 'Request must contain key start', 400
-    res = query_db(SELECT_CHANNEL_QUERY, (channel, start,))
+    d_start = dateparse(start)
+    res = query_db(SELECT_CHANNEL_QUERY, (channel, d_start,))
     return res
+
+
+def _to_csv(data):
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    for row in data:
+        time = str(row['created'])
+        channel = str(row['channel'])
+        t_f = str(row['temp_f'])
+        t_c = str(row['temp_c'])
+        writer.writerow([time, channel, t_f, t_c])
+    return Response(buf.getvalue(), mimetype='text/csv')
+
+
+@app.route("/fridge/csv")  # type: ignore
+def get_fridge_csv():
+    start = request.args.get('start')
+    if not start:
+        return 'Request must contain key start', 400
+    d_start = dateparse(start)
+    res = query_db(SELECT_DATA_QUERY, (d_start,))
+    return _to_csv(res)
+
+
+@app.route("/fridge/csv/channel/<int:channel>")  # type: ignore
+def get_channel_csv(channel: int):
+    start = request.args.get('start')
+    if not start:
+        return 'Request must contain key start', 400
+    d_start = dateparse(start)
+    res = query_db(SELECT_CHANNEL_QUERY, (channel, d_start,))
+    return _to_csv(res)
 
 
 if __name__ == '__main__':

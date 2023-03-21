@@ -17,6 +17,7 @@ class DataConfig:
     channels: int
     sample_rate: float
     output_path: str
+    db_path: str
 
 
 @dataclass
@@ -81,5 +82,6 @@ def load_config(path):
             channels,
             sample_rate,
             _get_key('output_path'),
+            _get_key('db_path'),
         ),
     )

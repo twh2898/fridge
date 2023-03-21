@@ -5,6 +5,7 @@ from time import sleep
 from datetime import datetime
 import logging
 from config import load_config
+import sqlite3
 
 from sensor import ADC, Mock
 
@@ -19,44 +20,30 @@ OUTDIR = config.data.output_path
 os.makedirs(OUTDIR, exist_ok=True)
 
 
-def main():
+SQL_INSERT_QUERY = '''
+INSERT INTO fridge_data (created, channel, temp_c, temp_f) VALUES(?, ?, ?, ?)
+'''
+
+
+def main(db: sqlite3.Connection):
     _l.info('Starting data acquisition')
     _l.debug('Sample frequency %f hz', config.data.sample_rate)
 
+    sensor: ADC | Mock
     if __debug__:
         _l.info('Using mock sensor')
         sensor = Mock()
     else:
         sensor = ADC()
 
-    start = datetime.now()
-    _l.debug('Start time is %s', start)
-
-    data_file = '{}.csv'.format(start.strftime('%Y%m%d'))
-    f = open(os.path.join(OUTDIR, data_file), 'a')
-    _l.info('Writing data to %s', data_file)
-
     while True:
         now = datetime.now()
-        if now.date() != start.date():
-            _l.debug('Current date %s does not match last date %s',
-                     now.date(), start.date())
-            _l.info('Rotating data files', now.date())
-            if f:
-                f.close()
-            data_file = '{}.csv'.format(start.strftime('%Y%m%d'))
-            f = open(os.path.join(OUTDIR, data_file), 'a')
-            _l.info('Writing data to %s', data_file)
-
-        row = [str(now)]
         for channel in range(config.data.channels):
             _, _, t_c, t_f = sensor.read(channel)
             print('Channel', channel, f'{t_f:.2f} F')
-            row.append(f'{t_c:.4f}')
-            row.append(f'{t_f:.4f}')
+            db.execute(SQL_INSERT_QUERY, (now, channel, t_c, t_f))
 
-        f.write(','.join(row) + '\n')
-        f.flush()
+        db.commit()
 
         wait_s = 1 / config.data.sample_rate
         _l.debug('Sleeping for %f seconds', wait_s)
@@ -64,8 +51,21 @@ def main():
 
 
 if __name__ == '__main__':
+    db = None
     try:
-        main()
+        _l.info('Opening database %s', config.data.db_path)
+        db = sqlite3.connect(config.data.db_path)
+        _l.debug('database open')
+
+        with open('init.sql', 'r') as f:
+            _l.debug('Running db init script')
+            db.executescript(f.read())
+
+        main(db)
+
+    except sqlite3.Error as e:
+        _l.exception('SQLite3 error')
+        raise e
 
     except RuntimeError as e:
         _l.exception('Runtime error')
@@ -74,3 +74,8 @@ if __name__ == '__main__':
     except Exception as e:
         _l.exception('Exception')
         raise e
+
+    finally:
+        if db:
+            _l.info('Closing database')
+            db.close()

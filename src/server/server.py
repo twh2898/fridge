@@ -126,4 +126,4 @@ def get_channel_csv(channel: int):
 
 
 if __name__ == '__main__':
-    app.run(debug=__debug__)
+    app.run(debug=__debug__, host='0.0.0.0')

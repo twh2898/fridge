@@ -1,4 +1,5 @@
 #!/bin/bash
 
 source .venv/bin/activate
-flask --app server run
+python3 -O server.py
+# flask --app server run

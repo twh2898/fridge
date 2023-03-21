@@ -5,16 +5,40 @@
   vars:
     username: fridge
     password: $1$/O16HWSN$vYfAEF0j2LpEfx5WFtj/4/
-    remote_root: /opt/fridge
-    remote_reader: "{{ remote_root }}/reader"
-    remote_server: "{{ remote_root }}/server"
-    remote_web: "{{ remote_root }}/web"
-    remote_log: /var/log/fridge
-    remote_service: /usr/lib/systemd/system
     local_src: "{{ playbook_dir }}/src"
+    remote_root: /opt/fridge
+    remote_log: /var/log/fridge
+    remote_data: /srv/fridge
     local_service: "{{ playbook_dir }}/service"
+    remote_service: /usr/lib/systemd/system
 
   roles:
     - init
-    - reader
-    - server
+
+    - role: app
+      vars:
+        app_name: reader
+        app_service: reader.service
+        app_src: "{{ local_src }}/reader"
+        app_dest: "{{ remote_root }}/reader"
+        app_files:
+          - config.py
+          - init.sql
+          - main.py
+          - reader.conf
+          - requirements.txt
+          - run.sh
+          - sensor.py
+      tags: reader
+
+    - role: app
+      vars:
+        app_name: server
+        app_service: server.service
+        app_src: "{{ local_src }}/server"
+        app_dest: "{{ remote_root }}/server"
+        app_files:
+          - requirements.txt
+          - run.sh
+          - server.py
+      tags: server

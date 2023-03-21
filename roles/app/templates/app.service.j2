@@ -1,0 +1,15 @@
+[Unit]
+Description=Run fridge component {{ app_name }}
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory={{ app_dest }}
+ExecStart=/bin/bash run.sh
+Restart=always
+RestartSec=60
+User=fridge
+Group=fridge
+
+[Install]
+WantedBy=default.target

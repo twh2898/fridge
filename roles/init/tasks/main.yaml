@@ -38,3 +38,12 @@
     mode: "0755"
     owner: "{{ username }}"
     group: "{{ username }}"
+
+- name: Create remote data
+  become: true
+  ansible.builtin.file:
+    path: "{{ remote_data }}"
+    state: directory
+    mode: "0755"
+    owner: "{{ username }}"
+    group: "{{ username }}"

@@ -98,3 +98,4 @@ cython_debug/
 
 *.csv
 *.log
+*.db

@@ -3,7 +3,7 @@ import sqlite3
 from dateutil.parser import parse as dateparse
 
 if __debug__:
-    DATABASE = './main.db'
+    DATABASE = '../reader/fridge.db'
 else:
     DATABASE = '/srv/fridge/fridge.db'
 
@@ -26,10 +26,6 @@ def get_db():
 
 with app.app_context():
     db = get_db()
-    if __debug__:
-        with app.open_resource('init.sql', 'r') as f:
-            db.executescript(f.read())
-            db.commit()
 
 
 def query_db(query, args=(), one=False):
